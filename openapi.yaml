@@ -1,0 +1,200 @@
+openapi: "3.1.0"
+info:
+  title: 医保 HOT API
+  description: 中文医保政策/行业新闻 AI 资讯服务
+  version: "1.0.0"
+  contact:
+    name: 医保信息通
+servers:
+  - url: http://localhost:8700
+    description: 本地开发环境
+paths:
+  /api/public/items:
+    get:
+      summary: 获取资讯列表
+      parameters:
+        - name: mode
+          in: query
+          schema:
+            type: string
+            enum: [selected, all]
+            default: selected
+          description: 精选 / 全部
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [policy, drugs, drg-dip, fund, service, industry, opinion]
+          description: 分类筛选
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: 关键词搜索（标题+摘要）
+        - name: since
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: 起始时间（默认近7天）
+        - name: take
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: 翻页游标
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemListResponse"
+  /api/public/daily:
+    get:
+      summary: 获取最新日报
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyResponse"
+  /api/public/daily/{date}:
+    get:
+      summary: 获取指定日期日报
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: 成功
+        "404":
+          description: 日报不存在
+  /api/public/dailies:
+    get:
+      summary: 日报归档列表
+      parameters:
+        - name: take
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 180
+            default: 30
+      responses:
+        "200":
+          description: 成功
+  /api/public/sources:
+    get:
+      summary: 获取数据源列表
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SourcesResponse"
+  /api/public/categories:
+    get:
+      summary: 获取分类列表
+      responses:
+        "200":
+          description: 成功
+  /health:
+    get:
+      summary: 健康检查
+      responses:
+        "200":
+          description: 正常
+  /openapi.yaml:
+    get:
+      summary: OpenAPI 规范文件
+      responses:
+        "200":
+          description: YAML 文件
+components:
+  schemas:
+    Item:
+      type: object
+      properties:
+        id: {type: string}
+        title: {type: string}
+        titleZh: {type: string, nullable: true}
+        summaryZh: {type: string, nullable: true}
+        url: {type: string}
+        source:
+          type: object
+          properties:
+            id: {type: string}
+            name: {type: string}
+            kind: {type: string, enum: [rss, scraper, manual]}
+        publishedAt: {type: string, format: date-time, nullable: true}
+        fetchedAt: {type: string, format: date-time, nullable: true}
+        category: {type: string, nullable: true}
+        tags: {type: array, items: {type: string}}
+        aiRelevance: {type: integer, nullable: true}
+        qualityScore: {type: integer, nullable: true}
+        finalScore: {type: integer, nullable: true}
+        aiSelected: {type: boolean}
+        aiSelectedReason: {type: string, nullable: true}
+    ItemListResponse:
+      type: object
+      properties:
+        count: {type: integer}
+        hasNext: {type: boolean}
+        nextCursor: {type: string, nullable: true}
+        total: {type: integer}
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Item"
+    DailyResponse:
+      type: object
+      properties:
+        date: {type: string}
+        generatedAt: {type: string, format: date-time, nullable: true}
+        lead:
+          type: object
+          properties:
+            title: {type: string}
+            summary: {type: string}
+        sections:
+          type: array
+          items:
+            type: object
+            properties:
+              label: {type: string}
+              items:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+        flashes:
+          type: array
+          items: {type: string}
+    SourcesResponse:
+      type: object
+      properties:
+        count: {type: integer}
+        sources:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string}
+              name: {type: string}
+              kind: {type: string}
+              url: {type: string, nullable: true}
+              rss_url: {type: string, nullable: true}
+              enabled: {type: boolean}
